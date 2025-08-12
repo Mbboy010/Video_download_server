@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { exec } = require('child_process');
+const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
@@ -15,15 +15,30 @@ app.get('/download', (req, res) => {
 
   const videosDir = path.resolve('./videos');
   if (!fs.existsSync(videosDir)) {
-    fs.mkdirSync(videosDir);
+    fs.mkdirSync(videosDir, { recursive: true });
   }
 
   const filename = `video-${Date.now()}.mp4`;
   const output = path.join(videosDir, filename);
 
-  exec(`./yt-dlp -o "${output}" "${videoUrl}"`, (error, stdout, stderr) => {
-    if (error) {
-      console.error('Download error:', stderr);
+  const ytdlp = spawn('./yt-dlp', ['-o', output, videoUrl]);
+
+  ytdlp.on('error', (err) => {
+    console.error('yt-dlp spawn error:', err);
+    return res.status(500).send('Download failed');
+  });
+
+  ytdlp.stderr.on('data', (data) => {
+    console.error(`yt-dlp stderr: ${data.toString()}`);
+  });
+
+  ytdlp.on('close', (code) => {
+    if (code !== 0) {
+      console.error(`yt-dlp exited with code ${code}`);
+      // Cleanup partial file if exists
+      if (fs.existsSync(output)) {
+        fs.unlink(output, () => {});
+      }
       return res.status(500).send('Download failed');
     }
 
@@ -32,7 +47,12 @@ app.get('/download', (req, res) => {
         console.error('Send file error:', err);
         res.status(500).end();
       } else {
-        fs.unlink(output, () => {});
+        // Delete file after sending
+        fs.unlink(output, (unlinkErr) => {
+          if (unlinkErr) {
+            console.error('Error deleting file:', unlinkErr);
+          }
+        });
       }
     });
   });
