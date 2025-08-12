@@ -13,7 +13,8 @@ app.get('/download', (req, res) => {
     return res.status(400).send('No URL provided');
   }
 
-  const videosDir = path.resolve('./videos');
+  // Path to Android public Downloads folder
+  const videosDir = '/storage/emulated/0/Download';
   if (!fs.existsSync(videosDir)) {
     fs.mkdirSync(videosDir, { recursive: true });
   }
@@ -53,17 +54,10 @@ app.get('/download', (req, res) => {
       return res.status(500).send('Download failed');
     }
 
-    res.download(output, filename, (err) => {
-      if (err) {
-        console.error('Send file error:', err);
-        res.status(500).end();
-      } else {
-        fs.unlink(output, (unlinkErr) => {
-          if (unlinkErr) {
-            console.error('Error deleting file:', unlinkErr);
-          }
-        });
-      }
+    // Instead of sending the file, just confirm download
+    res.json({
+      message: 'Download completed',
+      filePath: output
     });
   });
 });
