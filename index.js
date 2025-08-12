@@ -1,8 +1,8 @@
-import express from 'express';
-import cors from 'cors';
-import { exec } from 'child_process';
-import path from 'path';
-import fs from 'fs';
+const express = require('express');
+const cors = require('cors');
+const { exec } = require('child_process');
+const path = require('path');
+const fs = require('fs');
 
 const app = express();
 app.use(cors());
@@ -21,7 +21,6 @@ app.get('/download', (req, res) => {
   const filename = `video-${Date.now()}.mp4`;
   const output = path.join(videosDir, filename);
 
-  // Use local yt-dlp binary in current folder
   exec(`./yt-dlp -o "${output}" "${videoUrl}"`, (error, stdout, stderr) => {
     if (error) {
       console.error('Download error:', stderr);
@@ -33,7 +32,6 @@ app.get('/download', (req, res) => {
         console.error('Send file error:', err);
         res.status(500).end();
       } else {
-        // Delete file after sending
         fs.unlink(output, () => {});
       }
     });
