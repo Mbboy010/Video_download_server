@@ -1,20 +1,19 @@
+import express from 'express';
+import cors from 'cors';
 import { exec } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 
-export default function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).send('Method Not Allowed');
-  }
+const app = express();
+app.use(cors());
 
+app.get('/download', (req, res) => {
   const videoUrl = req.query.url;
   if (!videoUrl) {
     return res.status(400).send('No URL provided');
   }
 
   const videosDir = path.resolve('./videos');
-
-  // Create videos directory if it doesn't exist
   if (!fs.existsSync(videosDir)) {
     fs.mkdirSync(videosDir);
   }
@@ -22,25 +21,26 @@ export default function handler(req, res) {
   const filename = `video-${Date.now()}.mp4`;
   const output = path.join(videosDir, filename);
 
-  exec(`yt-dlp -o "${output}" "${videoUrl}"`, (error, stdout, stderr) => {
+  // Use local yt-dlp binary in current folder
+  exec(`./yt-dlp -o "${output}" "${videoUrl}"`, (error, stdout, stderr) => {
     if (error) {
-      console.error(`Error: ${stderr}`);
+      console.error('Download error:', stderr);
       return res.status(500).send('Download failed');
     }
 
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-
-    // Use sendFile to send the downloaded video file to client
-    res.sendFile(output, (err) => {
+    res.download(output, filename, (err) => {
       if (err) {
-        console.error('Error sending file:', err);
+        console.error('Send file error:', err);
         res.status(500).end();
       } else {
-        // Optionally delete the file after sending
-        fs.unlink(output, (unlinkErr) => {
-          if (unlinkErr) console.error('Failed to delete video:', unlinkErr);
-        });
+        // Delete file after sending
+        fs.unlink(output, () => {});
       }
     });
   });
-}
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});

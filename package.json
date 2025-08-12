@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "install-yt-dlp": "curl -L https://yt-dlp.org/downloads/latest/yt-dlp -o /usr/local/bin/yt-dlp && chmod a+rx /usr/local/bin/yt-dlp",
+    "install-yt-dlp": "curl -L https://yt-dlp.org/downloads/latest/yt-dlp -o ./yt-dlp && chmod a+rx ./yt-dlp",
     "start": "npm run install-yt-dlp && node index.js",
     "dev": "nodemon index.js"
   },
