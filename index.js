@@ -21,21 +21,32 @@ app.get('/download', (req, res) => {
   const filename = `video-${Date.now()}.mp4`;
   const output = path.join(videosDir, filename);
 
-  const ytdlp = spawn('./yt-dlp', ['-o', output, videoUrl]);
+  console.log(`Starting download for: ${videoUrl}`);
+  console.log(`Output path: ${output}`);
 
-  ytdlp.on('error', (err) => {
-    console.error('yt-dlp spawn error:', err);
-    return res.status(500).send('Download failed');
+  // Run yt-dlp via python3 because yt-dlp is a Python script
+  const ytdlpPath = 'python3';
+  const ytdlpArgs = ['./yt-dlp', '-o', output, videoUrl];
+
+  const ytdlp = spawn(ytdlpPath, ytdlpArgs);
+
+  ytdlp.stdout.on('data', (data) => {
+    console.log(`yt-dlp stdout: ${data.toString()}`);
   });
 
   ytdlp.stderr.on('data', (data) => {
     console.error(`yt-dlp stderr: ${data.toString()}`);
   });
 
+  ytdlp.on('error', (err) => {
+    console.error('yt-dlp spawn error:', err);
+    return res.status(500).send('Download failed');
+  });
+
   ytdlp.on('close', (code) => {
+    console.log(`yt-dlp process exited with code ${code}`);
+
     if (code !== 0) {
-      console.error(`yt-dlp exited with code ${code}`);
-      // Cleanup partial file if exists
       if (fs.existsSync(output)) {
         fs.unlink(output, () => {});
       }
@@ -47,7 +58,6 @@ app.get('/download', (req, res) => {
         console.error('Send file error:', err);
         res.status(500).end();
       } else {
-        // Delete file after sending
         fs.unlink(output, (unlinkErr) => {
           if (unlinkErr) {
             console.error('Error deleting file:', unlinkErr);
